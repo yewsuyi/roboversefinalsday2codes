@@ -6,6 +6,9 @@ import pyrealsense2 as rs
 import cv2
 import numpy as np
 import os
+from rknnlite.api import RKNNLite
+
+from rknndecoder import decode_yolov11_rknn, draw_detections
 
 # Create the 'images' directory if it doesn't already exist
 OUTPUT_DIR = "images"
@@ -15,7 +18,8 @@ ARUCO_DICT = cv2.aruco.DICT_7X7_1000
 # --------------------------------------------------
 # CONFIG & CLASS MAPS
 # --------------------------------------------------
-
+RKNN_MODEL_PATH = "models/my_model.rknn"
+MODEL_SIZE = (640, 640)
 
 YOLO_CLASS_NAMES = {
     0: "landing_pad",      # Tailor these to match your specific model classes
@@ -27,8 +31,24 @@ parameters = cv2.aruco.DetectorParameters()
 detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
 
 
+def load_rknn_model(model_path=RKNN_MODEL_PATH):
+    rknn = RKNNLite()
+    rknn.load_rknn(model_path)
+    rknn.init_runtime()
+    return rknn
 
-async def imager_task(receiver, stop_event, loopdelay, valid_aruco_ids):
+
+async def imager_task(
+    receiver,
+    stop_event,
+    loopdelay,
+    valid_aruco_ids,
+    rknn=None,
+    rknn_model_path=RKNN_MODEL_PATH,
+):
+    if rknn is None:
+        rknn = load_rknn_model(rknn_model_path)
+
     try:
         while not stop_event.is_set():
             # Get whatever video frame is currently streaming
@@ -53,7 +73,11 @@ async def imager_task(receiver, stop_event, loopdelay, valid_aruco_ids):
             # ============================================================
             if should_run_rknn: 
                 # FIX 1: We must capture the returned image into a variable
-                marked_image = detect_landing_pad(color_frame, marked_image)
+                marked_image = detect_landing_pad(
+                    color_frame,
+                    marked_image,
+                    rknn,
+                )
 
             # 3. Continuous Window Video Output Render
             # FIX 2: Show "marked_image" instead of "colour_image"
@@ -67,16 +91,15 @@ async def imager_task(receiver, stop_event, loopdelay, valid_aruco_ids):
     except Exception as e:
         print(f"Critical execution breakdown in pipeline loop: {e}")
     finally:
+        rknn.release()
         cv2.destroyAllWindows()
 
 def detect_aruco_markers(image):
     """
-    Detects ArUco markers in a BGR or RGB image.
+    Detects ArUco markers in a BGR OpenCV image.
     
     Parameters:
-    - image: numpy.ndarray, the BGR or RGB image frame.
-    - dictionary_type: cv2.aruco.Dict, the dictionary of the target marker.
-                       Defaults to cv2.aruco.DICT_5X5_250.
+    - image: numpy.ndarray, the BGR image frame.
                        
     Returns:
     - detected_ids: list of detected marker IDs (or an empty list if none).
@@ -113,18 +136,17 @@ def detect_aruco_markers(image):
         
     return detected_ids, marked_image
 
-def detect_landing_pad(color_frame, marked_image):
-
+def detect_landing_pad(color_frame, marked_image, rknn):
     # Setup dimensions for the model input
-    model_size = (640, 640)
+    model_size = MODEL_SIZE
     
     # Get original dimensions from the input image
     image_height, image_width = color_frame.shape[:2]
         
     # Step 1: Pre-process the frame for the model
-    img_for_model = color_frame.copy()
+    img_for_model = cv2.cvtColor(color_frame, cv2.COLOR_BGR2RGB)
     img_resized = cv2.resize(img_for_model, model_size)
-    img_input = np.expand_dims(img_resized, axis=0) # Add batch dimension (1, 640, 640, 3)
+    img_input = np.expand_dims(img_resized.astype(np.uint8), axis=0) # Add batch dimension (1, 640, 640, 3)
 
     # Step 2: Hardware NPU accelerated inference execution
     outputs = rknn.inference(inputs=[img_input])
@@ -152,4 +174,3 @@ def detect_landing_pad(color_frame, marked_image):
 
     # Return marked_image directly (it's either modified by draw_detections or left clean)
     return marked_image
-
