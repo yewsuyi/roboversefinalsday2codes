@@ -1,113 +1,162 @@
 # 3x swarm drone landing code
 import asyncio
 import numpy as np
+from ScanMap import ScanMapper
 from Astar import pathfind
+from dola import Dola
+from DroneDrivers.HULAXdrone import Drone
 
-safe_entrypoints_XYU = [] # one tuple coord for each drone
-landing_points_XYU = [] # one tuple coord for each drone
-astarinstructions = []
-
-
-
-NUM_DRONES = 3
-
-#CHECK
-METRES_PER_CELL = 0.1 #MUST AGREE ACROSS MAPPER/LANDER/SHOCKWAVE.py
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+USE_HULA_MANUAL_MODE = True
+USE_UWB_MODE = True
 OBS_INFLATION_BUFFER = 10
+CASCADE_DELAY = 5.0
+
+#IP:
+drone_info = {
+    "TODOIP1":{
+        "UWB_TAG": 0,
+        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": -1.38,
+        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": -2.75,
+        "LANDING_Nym": -1.38,
+        "LANDING_Exm": -2.75,
+        "ORDER":0,
+        },
+
+    # "TODOIP2":{
+    #     "UWB_TAG": 1,
+    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": -1.38,
+    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": -2.90,
+    #     "LANDING_Nym": -1.38,
+    #     "LANDING_Exm": -2.90,
+    #     "ORDER":1,
+    # },
+
+    # "TODOIP3":{
+    #     "UWB_TAG": 2,
+    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": -1.38,
+    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": -3.05,
+    #     "LANDING_Nym": -1.38,
+    #     "LANDING_Exm": -3.05,
+    #     "ORDER":2,
+    # }
+
+}
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+ARENA_NORTHLENGTH = 220
+ARENA_EASTLENGTH = 110
+METRES_PER_SCANMAP_CELL = 0.05
+BORDERWALL_THICKNESS = 1
+
+drones = {} #store drone objects here after connecting to them, key by ip address
+scanmappers = {}
+waypoints_xym = {}
+# astarinstructions = {}
 
 async def run():
 
-    # load obstaclemap, a boolean array
-    obstaclemap = np.load("obstaclemap.npy")
+    try: 
 
-    # generate astar path instructions
-    for i in range(NUM_DRONES):
+        if USE_UWB_MODE:
+            parser = UWBParserThread()
+            if not parser.serial_port:
+                print("No UWB device detected. Exiting.")
+                return
+            else: parser.start()
+        else: parser = None
 
-        path = pathfind(
-            obstaclemap=obstaclemap,
-            start_xu=safe_entrypoints_XYU[i][0], #or the drone's position's XU (convert)
-            start_yu=safe_entrypoints_XYU[i][1], #or the drone's position's YU (convert)
-            goal_xu=landing_points_XYU[i][0],
-            goal_yu=landing_points_XYU[i][1],
-            buffer=OBS_INFLATION_BUFFER,
-        )
+        # load obstaclemap, a boolean array
+        obstaclemap = np.load("obstaclemap.npy")
 
-        waypoints = simplifypath(path) #waypoints are a list of tuples(Ny_u, Ex_u)
-        instructions = calc_instructions(waypoints, METRES_PER_CELL) #(direction, Ny_offset, Ex_offset)
-        # if len(instructions)>1:
-        #     if abs(instructions[-1][1]) + abs(instructions[-1][2]) < 0.6:
-        #         #last 2 points is a microadjustment, ignore
-        #         print(f"last instr dist < 0.6, ignoring {instructions[-1][0]}wards: {instructions[-1][1]:.2f}N | {instructions[-1][2]:.2f}")
-        #         instructions.pop()
-
-        astarinstructions.append(instructions)
+        # generate astar path instructions
+        for ip, info in drone_info.items():
 
 
-    # TODO DRONE SWARM SETUP - refer to huladola.py
-    # MAKE ALL 3 DRONES FLY UP TOGETHER, drone.arm_and_takeoff(blocking=False)
-    # OR drones fly up one by one, drone.arm_and_takeoff(blocking=True)
+            drones[ip] = Drone(
+                self,
+                USE_HULAX_MANUAL_MODE,
+                info["UWB_TAG"],
+                USE_UWB_MODE,
+                ip,
+            )
+            drones[ip].connect()
+            drones[ip].face_camera_down()
+            print("drone connected")
 
 
+            scanmappers[ip] = ScanMapper(
+                heightcells_NORTHLENGTH=ARENA_NORTHLENGTH,
+                widthcells_EASTLENGTH=ARENA_EASTLENGTH,
+                metrespercell=METRES_PER_SCANMAP_CELL,
+                ScanmapOriginOffset_Exm=info["SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm"],
+                ScanmapOriginOffset_Nym=info["SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym"],
+                OBSTACLEMAP=obstaclemap,
+                scanradius=10,
+                scanwidth=13,
+                borderwallthickness=BORDERWALL_THICKNESS,
+            )
 
 
+            drone_xu, drone_yu = scanmappers[ip].worldNE_to_scanmapXY(0.0, 0.0)
+            goal_xu, goal_yu = scanmappers[ip].worldNE_to_scanmapXY(info["LANDING_Nym"], info["LANDING_Exm"])
 
-    # for each drone, go to safe entrypoint, then follow boxy astar path to the landing zone, then land
-    await goto_entrypoint(drones, 0)
+            path_yxu = pathfind(
+                obstaclemap=obstaclemap,
+                start_xu=drone_xu,
+                start_yu=drone_yu,
+                goal_xu=goal_xu,
+                goal_yu=goal_yu,
+                buffer=OBS_INFLATION_BUFFER,
+            ) #list of yxu tuples
+            
+            path_yxm = [scanmappers[ip].scanmapXY_to_worldNE(x, y) for y, x in path_yxu]
+            waypoints_xym[ip] = [(E, N) for N, E in path_yxm]
+            #we want XYM coords
 
-    while True: asyncio.sleep(1) #keep thread awake?
+            # waypoints = simplifypath(path) #waypoints are a list of tuples(Ny_u, Ex_u)
+            # instructions = calc_instructions(waypoints, METRES_PER_CELL) #(direction, Ny_offset, Ex_offset)
+            # # if len(instructions)>1:
+            # #     if abs(instructions[-1][1]) + abs(instructions[-1][2]) < 0.6:
+            # #         #last 2 points is a microadjustment, ignore
+            # #         print(f"last instr dist < 0.6, ignoring {instructions[-1][0]}wards: {instructions[-1][1]:.2f}N | {instructions[-1][2]:.2f}")
+            # #         instructions.pop()
+            # astarinstructions[ip] = instructions
 
-async def goto_entrypoint(drones, droneno):
+        stagecount = 0
+        numdrones = len(drones)
+        while stagecount <= numdrones:
+            for ip, info in drone_info.items():
+                if info["ORDER"] == stagecount:
+                    print(f"Stage {stagecount}: Drone {ip} taking off")
+                    drones[ip].arm_and_takeoff(False)
+                
+                elif info["ORDER"] == stagecount - 1:
+                    print(f"Stage {stagecount}: Drone {ip} taking off")
+                    asyncio.create_task(drones[ip].follow_waypoints_and_land(
+                        scanmappers[ip],
+                        parser,
+                        waypoints_xym[ip],
+                        waypoints_xym[ip][-1],
+                    ))
+                    # await drone.follow_waypoints(
+                    #     scanmapper,
+                    #     parser,
+                    #     path_to_follow_xym, #waypoints_xym,
+                    #     state,
+                    #     path_to_follow_xym[-1],
+                    # )
 
-    if droneno >= NUM_DRONES: return
+            stagecount+=1
+            await asyncio.sleep(CASCADE_DELAY)
+        
+        while True: await asyncio.sleep(1.0) #keep thread alive
+            
 
+    except Exception as e: raise e
+    finally:
+        parser.stop()
+        parser.join()
 
-    #TODO GOTO ENTRYPOINT
-
-
-
-    follow_path_found(drones, droneno)
-    # asyncio.sleep(1.0)
-    goto_entrypoint(drones, droneno+1)
-
-async def follow_path_found(drones, droneno):
-
-    # path is astarinstructions[droneno]
-
-    print(f"MOVING DRONE [{droneno}] NOW...")
-    leninst = len(instructions)
-    for i in range(leninst):
-
-        print(f"move {i+1}/{leninst} - {instructions[i][0]}wards: {instructions[i][1]:.2f}N | {instructions[i][2]:.2f}E")
-        #TODO MOVE (OFFSET POSITION) BY await drone.goto_NEpos(state, instructions[i][1], instructions[i][2])
-
-    #TODO LAND DRONE
-
-
-
-
-def calc_instructions(path, resolution=0.1): #path is y,x
-
-    instructions = []
-    if len(path)<2: return path
-
-    for i in range(len(path) - 1):
-
-        dy = path[i+1][0] - path[i][0]
-        dx = path[i+1][1] - path[i][1]
-        dir = ""
-
-        if dy == 0: #horizontal movement (x or E-W)
-            if dx > 0: dir = "east"
-            else: dir = "west"
-        else: #vertical movement (y or N-S)
-            if dy > 0: dir = "north" 
-            else: dir = "south"
-
-        instructions.append((dir, dy*resolution, dx*resolution)) 
-
-    #(direction to turn to, Ny_offset, Ex_offset)
-    #read direction to know how to turn, feed Ny_offset, Ex_offset into drone.goto_NEpos(Ny, Ex) directly
-    return instructions
 
 if __name__ == "__main__":
     asyncio.run(run())

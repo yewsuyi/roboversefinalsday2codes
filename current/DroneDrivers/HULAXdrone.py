@@ -2,7 +2,7 @@ from pyhulax import DroneAPI
 from pyhulax.core import Direction, TelemetryUnavailable,CameraPitchMode
 import asyncio
 import math
-from DroneDrivers.path_following import compute_path_follow_command, forward_speed_to_ned_velocity
+from path_following import compute_path_follow_command, forward_speed_to_ned_velocity
 from UWBaller import UWBxy_to_globalNE
 
 dt = 0.05
@@ -13,8 +13,8 @@ class Drone():
         USE_HULAX_MANUAL_MODE,
         UWB_TAG,
         USE_UWB_MODE,
-        system_address="udpin://0.0.0.0:14540",
-        takeoff_height=3.25,
+        system_address,
+        takeoff_height=1.0,
         NE_TOLERANCE=0.05, #0.10?
         D_TOLERANCE=0.05,
         D_VELO_TOLERANCE=0.05,
@@ -170,10 +170,22 @@ class Drone():
 
 
 
-
-
-
-
+    async def follow_waypoints_and_land(
+        self,
+        scanmapper,
+        UWBparser,
+        waypoints,
+        goal_xy_coords,
+    ):
+        await self.follow_waypoints(
+            scanmapper,
+            UWBparser,
+            waypoints,
+            goal_xy_coords,
+        )
+        goal_x, goal_y = goal_xy_coords
+        print(f"{self.system_address}: drone reached landingzone NE:{scanmapper.scanmapXY_to_worldNE(goal_x, goal_y)}, LANDING")
+        await self.land()
 
 
     # NOTE USE_HULAX_MANUAL_MODE must be TRUE
@@ -184,7 +196,6 @@ class Drone():
         scanmapper,
         UWBparser,
         waypoints,
-        state,
         goal_xy_coords,
 
         navspeed=0.5,
@@ -205,7 +216,8 @@ class Drone():
         - yaw 0 = north, yaw 90 = east
         - caller must start offboard mode before calling this
         """
-        commanded_yaw = state.yaw_deg  # initialise to current yaw
+        drone_yaw_deg = 0.0
+        commanded_yaw = drone_yaw_deg  # initialise to current yaw (always 0.0)
         mypath = waypoints.copy()
         
 
@@ -234,9 +246,11 @@ class Drone():
 
                     drone_position = (current_e, current_n)
 
-                else: drone_position = (state.east, state.north)
+                else:
+                    current_n, current_e, current_d = await self.get_position_ned()
+                    drone_position = (current_e, current_n)
 
-                drone_yaw_deg = state.yaw_deg
+                # drone_yaw_deg = state.yaw_deg
 
                 speed_multiplier, target_yaw, distance_to_goal, target_position_xym = compute_path_follow_command(
                     waypoints=mypath,
