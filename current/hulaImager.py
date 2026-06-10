@@ -1,11 +1,15 @@
 import cv2
 import numpy as np
+import os
+import asyncio
 
 # Set up the ArUco detector parameters and dictionary
 aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_7X7_1000)
 parameters = cv2.aruco.DetectorParameters()
 detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
-        
+
+OUTPUT_DIR = "images"
+os.makedirs(OUTPUT_DIR, exist_ok=True)       
 
 #add id parameter in the async task, use it in naming image files for uniqueness
 async def detect_aruco_markers(id, drone, loopdelay=0.1):
@@ -23,13 +27,13 @@ async def detect_aruco_markers(id, drone, loopdelay=0.1):
     - marked_image: image with bounding boxes drawn around the markers.
     """
 
-    
-    hulaImager_init(id, drone)
+    stream = hula_Imager_init(id, drone)
     while True: 
         
+        if hula_Imager_loop(id, stream): break
+        await asyncio.sleep(loopdelay)
         # Exit loop cleanly if 'q' is pressed in the image window
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        
             
 
 def hula_Imager_init(id, drone): 
@@ -40,17 +44,12 @@ def hula_Imager_init(id, drone):
     if stream is not None:
         stream.start()
         print(f"Stream {id}Active. Display window rendering. Press 'Q' on keyboard to close.")
+        return stream
     else:
         print(f"[ERROR] Stream {id} instantiation object dropped by drone firmware.")
-
-    except Exception as error:
-        print(f"[CRITICAL FAILURE] Pipeline dropped: {error}")
-    finally:
-        print("Safely shutting down streams and window frameworks...")
-        cv2.destroyAllWindows()
     
 
-def hula_Imager_loop(id, stream)
+def hula_Imager_loop(id, stream):
     frame_obj = stream.latest_frame
     if frame_obj is not None:
 
@@ -67,9 +66,16 @@ def hula_Imager_loop(id, stream)
         if ids is not None:
             detected_ids = ids.flatten().tolist()
             cv2.aruco.drawDetectedMarkers(marked_image, corners, ids)
+            # Turn list [1, 2] into a string format "1_2" for the filename
+            id_string = "_".join(str(x) for x in detected_ids)
+            filename = f"Drone_{id}_{id_string}.png"
+
+            filepath = os.path.join(OUTPUT_DIR, filename)
+            cv2.imwrite(filepath, marked_image)
 
         cv2.imshow(f"Drone {id} Feed", marked_image)
-    
+        if cv2.waitKey(1) & 0xFF == ord('q'): return True
+    return False
 
 
     

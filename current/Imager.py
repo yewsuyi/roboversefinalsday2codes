@@ -11,7 +11,6 @@ import os
 OUTPUT_DIR = "images"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-
 ARUCO_DICT = cv2.aruco.DICT_7X7_1000
 # --------------------------------------------------
 # CONFIG & CLASS MAPS
@@ -95,6 +94,10 @@ def detect_aruco_markers(image):
     
     # 4. Process results if any markers are found
     if ids is not None:
+        detected_ids = ids.flatten().tolist()
+        # Draw boundaries and IDs on the image
+        cv2.aruco.drawDetectedMarkers(marked_image, corners, ids)
+
         # Turn list [1, 2] into a string format "1_2" for the filename
         id_string = "_".join(str(x) for x in detected_ids)
         filename = f"marker_{id_string}.png"
@@ -104,9 +107,8 @@ def detect_aruco_markers(image):
         cv2.imwrite(filepath, marked_image)
 
 
-        detected_ids = ids.flatten().tolist()
-        # Draw boundaries and IDs on the image
-        cv2.aruco.drawDetectedMarkers(marked_image, corners, ids)
+        
+        
         print(detected_ids)
         
     return detected_ids, marked_image
