@@ -60,7 +60,7 @@ class CameraReceiver:
 
     def get_depth_frame(self):
         with self.lock:
-            return None if self.depth is None else self.depth.copy()
+            return None if self.depth is None else self.depth.copy() # might have arrary with np.asanyarry
         
     def get_RGB_frame(self):
         with self.lock:

@@ -4,10 +4,8 @@ import asyncio
 # from CameraReceivers.RealsenseCamera import CameraReceiver #DONT IMPORT HERE
 import pyrealsense2 as rs
 import cv2
-from UWBaller import UWBxy_to_globalNE
-from customtopdown import depth_pixel_to_xz
 import numpy as np
-from customtopdown import depth_pixel_to_xz_downward
+
 
 ARUCO_DICT = cv2.aruco.DICT_7X7_1000
 # --------------------------------------------------
@@ -35,94 +33,32 @@ async def imager_task(
     try:
         while not stop_event.is_set():
             # Get whatever video frame is currently streaming
-            image = receiver.get_video_frame()
-            corresp_depth_image = receiver.get_depth_frame()
+            color_frame = receiver.get_RGB_frame()
+            depth_frame = receiver.get_depth_frame()
             
-            if image is None or corresp_depth_image is None:
+            if color_frame is None or depth_frame is None:
                 await asyncio.sleep(loopdelay)
                 continue
-
-            colour_image_height, colour_image_width = image.shape[:2]
-
-            # ------------------------------------------------------------
-            # DYNAMIC STREAM DETECTION BASED ON NUMPY CHANNELS
-            # ------------------------------------------------------------
-            if len(image.shape) == 2:
-                # If shape is strictly 2D (height, width), it is INFRARED grayscale
-                colour_image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-                gray = image.copy()
-            else:
-                # If shape has 3 channels (height, width, 3), it is native BGR COLOR
-                colour_image = image.copy()
-                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-
-            # ============================================================
-            # STEP 2: RUN ARUCO DETECTION FIRST
-            # ============================================================
-            corners, ids, rejected = detector.detectMarkers(gray)
             
-            # Initialization gate flag for RKNN execution
-            should_run_rknn = False
+            # 1. ArUco Marker Detection for Landing Pad Verification
+            # ==============================================================
+            should_run_rknn = False  # Flag to control whether to run YOLOv11 inference
+            detected_ids, marked_image = detect_aruco_markers(color_frame)
+            for id in detected_ids:
+                if id in valid_aruco_ids:
+                    should_run_rknn = True
+                    print("Valid ID detected! Activating YOLOv11 Landing Pad Verification...")
+                    break
 
-            if ids is not None: 
-                flat_ids = ids.flatten()
-                print("Detected ArUco markers:", flat_ids.tolist())
-                cv2.aruco.drawDetectedMarkers(colour_image, corners, ids)
-                
-                for marker_corners, marker_id in zip(corners, flat_ids):
-                    # Check if the observed ID exists inside your VALID_IDS filter rule
-                    if marker_id in VALID_IDS:
-                        should_run_rknn = True  # Raise gate flag to trigger RKNN verification
-                        
-                    points = marker_corners.reshape((4, 2))
-
-
+            # 2. Landing Pad Verification with YOLOv11 on RKNN NPU
             # ============================================================
-            # STEP 3: GATED RKNN INFERENCE (RUNS ONLY IF ID IS VALID)
-            # ============================================================
-            if should_run_rknn:
-                print("Valid ID detected! Activating YOLOv11 Landing Pad Verification...")
-                
-                model_size = (640, 640)
-                
-                if use_infrared and len(image.shape) == 2:
-                    img_for_model = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-                else:
-                    img_for_model = image.copy() 
-                    
-                img_resized = cv2.resize(img_for_model, model_size)
-                img_input = np.expand_dims(img_resized, axis=0)
+            if should_run_rknn: 
+                # FIX 1: We must capture the returned image into a variable
+                marked_image = detect_landing_pad(color_frame, marked_image)
 
-                # Hardware NPU accelerated inference execution
-                outputs = rknn.inference(inputs=[img_input])
-
-                # Feed tensor arrays into your custom decoding script
-                final_boxes, final_scores, final_classes = decode_yolov11_rknn(
-                    outputs=outputs,
-                    img_shape=(colour_image_height, colour_image_width),
-                    model_input_size=model_size
-                )
-
-                # ============================================================
-                # STEP 4: LANDING PAD CONFIRMATION IF OBJECT VERIFIED
-                # ============================================================
-                if len(final_boxes) > 0:
-                    print(f"Landing Pad Verified! NPU found {len(final_boxes)} validation target(s).")
-                    
-                    # Graph bounding frames directly on top of screen output
-                    colour_image = draw_detections(
-                        colour_image, final_boxes, final_scores, final_classes, YOLO_CLASS_NAMES
-                    )
-
-                    # Extract location metrics from detected targets
-                    for box, score, cls_id in zip(final_boxes, final_scores, final_classes):
-                        x1, y1, x2, y2 = box.astype(int)
-                        center_x = int((x1 + x2) / 2)
-                        center_y = int((y1 + y2) / 2)
-
-            # 5. Continuous Window Video Output Render
-            cv2.imshow("RealSense Unified Gated Pipeline", colour_image)
+            # 3. Continuous Window Video Output Render
+            # FIX 2: Show "marked_image" instead of "colour_image"
+            cv2.imshow("RealSense Unified Gated Pipeline", marked_image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 stop_event.set()
                 break
@@ -133,3 +69,76 @@ async def imager_task(
         print(f"Critical execution breakdown in pipeline loop: {e}")
     finally:
         cv2.destroyAllWindows()
+
+def detect_aruco_markers(image):
+    """
+    Detects ArUco markers in a BGR or RGB image.
+    
+    Parameters:
+    - image: numpy.ndarray, the BGR or RGB image frame.
+    - dictionary_type: cv2.aruco.Dict, the dictionary of the target marker.
+                       Defaults to cv2.aruco.DICT_5X5_250.
+                       
+    Returns:
+    - detected_ids: list of detected marker IDs (or an empty list if none).
+    - marked_image: image with bounding boxes drawn around the markers.
+    """
+ 
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+
+    corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
+    
+    # Create a copy of the image to draw bounding boxes
+    marked_image = image.copy()
+    detected_ids = []
+    
+    # 4. Process results if any markers are found
+    if ids is not None:
+        detected_ids = ids.flatten().tolist()
+        # Draw boundaries and IDs on the image
+        cv2.aruco.drawDetectedMarkers(marked_image, corners, ids)
+        print(detected_ids)
+        
+    return detected_ids, marked_image
+
+def detect_landing_pad(color_frame, marked_image):
+
+    # Setup dimensions for the model input
+    model_size = (640, 640)
+    
+    # Get original dimensions from the input image
+    image_height, image_width = color_frame.shape[:2]
+        
+    # Step 1: Pre-process the frame for the model
+    img_for_model = color_frame.copy()
+    img_resized = cv2.resize(img_for_model, model_size)
+    img_input = np.expand_dims(img_resized, axis=0) # Add batch dimension (1, 640, 640, 3)
+
+    # Step 2: Hardware NPU accelerated inference execution
+    outputs = rknn.inference(inputs=[img_input])
+
+    # Step 3: Run custom decoding script to convert raw model outputs to boxes
+    final_boxes, final_scores, final_classes = decode_yolov11_rknn(
+        outputs=outputs,
+        img_shape=(image_height, image_width),
+        model_input_size=model_size
+    )
+    # Step 4: Landing pad confirmation if object verified
+    if len(final_boxes) > 0:
+        print(f"Landing Pad Verified! NPU found {len(final_boxes)} validation target(s).")
+        
+        # Graph bounding frames directly on top of screen output
+        marked_image = draw_detections(
+            marked_image, final_boxes, final_scores, final_classes, YOLO_CLASS_NAMES
+        )
+
+        # Extract location metrics from detected targets
+        for box, score, cls_id in zip(final_boxes, final_scores, final_classes):
+            x1, y1, x2, y2 = box.astype(int)
+            center_x = int((x1 + x2) / 2)
+            center_y = int((y1 + y2) / 2)
+
+    # Return marked_image directly (it's either modified by draw_detections or left clean)
+    return marked_image
+
