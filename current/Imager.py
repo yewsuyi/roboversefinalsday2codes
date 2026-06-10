@@ -5,13 +5,18 @@ import asyncio
 import pyrealsense2 as rs
 import cv2
 import numpy as np
+import os
+
+# Create the 'images' directory if it doesn't already exist
+OUTPUT_DIR = "images"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 ARUCO_DICT = cv2.aruco.DICT_7X7_1000
 # --------------------------------------------------
 # CONFIG & CLASS MAPS
 # --------------------------------------------------
-VALID_IDS = {1, 2, 3, 42}  # Example set of valid ArUco landing pad/marker IDs
+
 
 YOLO_CLASS_NAMES = {
     0: "landing_pad",      # Tailor these to match your specific model classes
@@ -24,12 +29,7 @@ detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
 
 
 
-async def imager_task(
-    receiver, mapper, state, parser, scanmapper, 
-    use_uwb_mode, use_pitchdown, pitchdown, stop_event, loopdelay,
-    valid_aruco_ids,
-    use_infrared=False
-):
+async def imager_task(receiver, stop_event, loopdelay, valid_aruco_ids):
     try:
         while not stop_event.is_set():
             # Get whatever video frame is currently streaming
@@ -95,6 +95,15 @@ def detect_aruco_markers(image):
     
     # 4. Process results if any markers are found
     if ids is not None:
+        # Turn list [1, 2] into a string format "1_2" for the filename
+        id_string = "_".join(str(x) for x in detected_ids)
+        filename = f"marker_{id_string}.png"
+        # Combine folder path and filename (e.g., "bean/pad_1.png")
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        # Save the image frame to your disk
+        cv2.imwrite(filepath, marked_image)
+
+
         detected_ids = ids.flatten().tolist()
         # Draw boundaries and IDs on the image
         cv2.aruco.drawDetectedMarkers(marked_image, corners, ids)

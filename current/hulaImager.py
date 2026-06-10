@@ -1,11 +1,19 @@
 import cv2
 import numpy as np
 
-def detect_aruco_markers(image, dictionary_type=cv2.aruco.DICT_7X7_1000):
+# Set up the ArUco detector parameters and dictionary
+aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_7X7_1000)
+parameters = cv2.aruco.DetectorParameters()
+detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
+        
+
+#add id parameter in the async task, use it in naming image files for uniqueness
+async def detect_aruco_markers(id, drone, loopdelay=0.1):
     """
     Detects ArUco markers in a BGR or RGB image.
     
     Parameters:
+    - id: int, unique identifier for the drone or session, used for naming output files.
     - image: numpy.ndarray, the BGR or RGB image frame.
     - dictionary_type: cv2.aruco.Dict, the dictionary of the target marker.
                        Defaults to cv2.aruco.DICT_5X5_250.
@@ -14,28 +22,54 @@ def detect_aruco_markers(image, dictionary_type=cv2.aruco.DICT_7X7_1000):
     - detected_ids: list of detected marker IDs (or an empty list if none).
     - marked_image: image with bounding boxes drawn around the markers.
     """
-    # 1. Convert BGR to Grayscale (ArUco detection requires grayscale)
-    if len(image.shape) == 3:  
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    
+    hulaImager_init(id, drone)
+    while True: 
+        
+        # Exit loop cleanly if 'q' is pressed in the image window
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+            
+
+def hula_Imager_init(id, drone): 
+
+    stream = drone.create_video_stream()
+    drone.set_video_stream(True)
+        
+    if stream is not None:
+        stream.start()
+        print(f"Stream {id}Active. Display window rendering. Press 'Q' on keyboard to close.")
     else:
-        gray = image.copy()
-        
-    # 2. Set up the ArUco detector parameters and dictionary
-    aruco_dict = cv2.aruco.getPredefinedDictionary(dictionary_type)
-    parameters = cv2.aruco.DetectorParameters()
+        print(f"[ERROR] Stream {id} instantiation object dropped by drone firmware.")
+
+    except Exception as error:
+        print(f"[CRITICAL FAILURE] Pipeline dropped: {error}")
+    finally:
+        print("Safely shutting down streams and window frameworks...")
+        cv2.destroyAllWindows()
     
-    # 3. Detect the markers
-    corners, ids, rejectedImgPoints = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+
+def hula_Imager_loop(id, stream)
+    frame_obj = stream.latest_frame
+    if frame_obj is not None:
+
+        # Convert internal array bytes to a standard RGB frame
+        rgb_array = frame_obj.to_rgb()
+        # Convert to BGR format which OpenCV natively displays correctly
+        image = cv2.cvtColor(rgb_array, cv2.COLOR_RGB2BGR)
+
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        corners, ids, rejectedImgPoints = detector.detectMarkers(gray)
+
+        # draw the bounding boxes 
+        marked_image = image.copy()
+        if ids is not None:
+            detected_ids = ids.flatten().tolist()
+            cv2.aruco.drawDetectedMarkers(marked_image, corners, ids)
+
+        cv2.imshow(f"Drone {id} Feed", marked_image)
     
-    # Create a copy of the image to draw bounding boxes
-    marked_image = image.copy()
-    detected_ids = []
+
+
     
-    # 4. Process results if any markers are found
-    if ids is not None:
-        detected_ids = ids.flatten().tolist()
-        # Draw boundaries and IDs on the image
-        cv2.aruco.drawDetectedMarkers(marked_image, corners, ids)
-        print(detected_ids)
-        
-    return detected_ids, marked_image
