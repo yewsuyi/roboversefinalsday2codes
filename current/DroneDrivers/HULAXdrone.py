@@ -46,8 +46,6 @@ class Drone():
         self.Ki = Ki
         self.Kd = Kd
 
-
-
         self.drone = DroneAPI()
         self.hovertask = None
         self.ctrl = None
@@ -77,14 +75,14 @@ class Drone():
     async def face_camera_down(self):
         self.drone.set_camera_angle(CameraPitchMode.DOWN_ABSOLUTE, 90)
 
-    async def hovertask(self):
+    async def _hovertask(self):
         try:
             while True:
                 self.drone.send_manual_control()
                 await asyncio.sleep(0.05)
         except asyncio.CancelledError: pass
     async def hover(self):
-        if self.hovertask is None: self.hovertask = asyncio.create_task(self.hovertask())
+        if self.hovertask is None: self.hovertask = asyncio.create_task(self._hovertask())
         else: print("Already hovering.")
     async def stop_hover(self):
         if self.hovertask is not None:
@@ -166,19 +164,21 @@ class Drone():
         #TCAN REPEAT THIS WHOLE BLOCK FOR MORE ACCURACY
         
             
-    # hula drone prob doesnt need to turn anyway
-    # async def turn_to_yaw_deg(self):
-    #     self.stop_hover()
-    #     # BUT IF NEEDED, USE create_flight_controller, reference nonUWB_fly_to_position
-    #     pass
+
+
+
+
+
+
+
+
+
+
+
 
     # NOTE USE_HULAX_MANUAL_MODE must be TRUE
-    async def follow_waypoints(self):
-        self.stop_hover()
-        # USE send_manual_control at 20Hz
-        # https://pyhulax.xenops.ae/sdk/pyhulax/#manual-control
-
-
+    # USE send_manual_control at 20Hz
+    # https://pyhulax.xenops.ae/sdk/pyhulax/#manual-control
     async def follow_waypoints(
         self,
         scanmapper,
@@ -187,15 +187,15 @@ class Drone():
         state,
         goal_xy_coords,
 
-        navspeed=0.3,###1.5, ###1.0, #0.5
-        goal_threshold=0.10, #0.30 ##0.15, #1.3, #1.5 ####1.0 ##0.75 #0.30 #0.30
-        waypoint_tolerance=0.10, ##0.10, #0.60,###0.50 ##0.40 #0.20 #0.05
+        navspeed=0.5,
+        goal_threshold=0.10, #LANDING PAD TOLERANCE
+        waypoint_tolerance=0.15, ##0.10, #0.60,###0.50 ##0.40 #0.20 #0.05
         use_yaw_slowdown=True,
-        slow_yaw_error_deg=20.0, #30.0, ####15.0, ###15.0, ##20.0
-        stop_yaw_error_deg=40.0, #60.0, ####30.0, ###30.0, ##40.0
+        slow_yaw_error_deg=20.0, #30.0, ####15.0,
+        stop_yaw_error_deg=40.0, #60.0, ####30.0,
 
         loopdelay=0.05,
-        max_yaw_rate_deg_per_tick = 2.5, #2.0, #4.0, #3.0 #2.5 ###2.0 ##4.0 #10.0  # tune this — degrees per loopdelay tick
+        max_yaw_rate_deg_per_tick = 2.5, #2.0, #4.0, #3.0 #2.5 #MAX TURN RATE
         lookahead=0.60, ##0.40, #2.0,####1.5, ###1.0
         
     ):
@@ -211,7 +211,7 @@ class Drone():
 
         try:
 
-            await self.stop_hover()
+            self.stop_hover()
             while True:
 
                 if self.uwb_mode:
@@ -220,14 +220,14 @@ class Drone():
 
                     if valid is None:
                         print("UWB data MISSING, cannot follow path.")
-                        await self.send_velocity(0.0, 0.0, 0.0, state.yaw_deg)  # Stop movement if UWB data is not ready
+                        self.drone.send_manual_control()  # Stop movement if UWB data is not ready
                         # UWBskipped = True
                         await asyncio.sleep(loopdelay)
                         continue
 
                     elif not valid:
                         print("UWB data OUTDATED, cannot follow path.")
-                        await self.send_velocity(0.0, 0.0, 0.0, state.yaw_deg)  # Stop movement if UWB data is not ready
+                        self.drone.send_manual_control()  # Stop movement if UWB data is not ready
                         # UWBskipped = True
                         await asyncio.sleep(loopdelay)
                         continue
@@ -256,33 +256,42 @@ class Drone():
                 scanmapper.scanmap[target_yu, target_xu] = 4
 
                 if distance_to_goal <= goal_threshold:
-                    # await self.velocity_brake(state)
-                    await self.hover(state)
-                    # self.send_velocity(0.0, 0.0, 0.0, commanded_yaw)
+                    await self.hover()
                     return
 
                 #LERP the YAW
                 commanded_yaw = slew_yaw(commanded_yaw, target_yaw, max_yaw_rate_deg_per_tick)
 
+                #this alr limits the speed to forward_speed
                 forward_speed = navspeed * speed_multiplier
                 north_velocity, east_velocity = forward_speed_to_ned_velocity(
                     forward_speed=forward_speed,
                     yaw_deg=commanded_yaw,
                 )
 
-                await self.send_velocity(
-                    north_velocity,
-                    east_velocity,
-                    0.0,
-                    commanded_yaw,
-                )
-                self.drone.send_manual_control()
+                # await self.send_velocity(
+                #     north_velocity,
+                #     east_velocity,
+                #     0.0,
+                #     commanded_yaw,
+                # )
+
+                self.drone.send_manual_control(north_velocity, east_velocity)
+                # NOTE THAT IF DRONE TURNS, NEED TO ROTATE THIS SINCE
+                # - send_manual_control is (fwd, right) and not (N, E)
+                # - but it works in this case if the drone is just oriented north forever
 
                 await asyncio.sleep(loopdelay)
 
         except Exception as e:
             print(f"follow_waypoints error: {type(e).__name__}: {e}")
             raise
+
+
+
+
+
+
 
 
 
@@ -400,3 +409,7 @@ class Drone():
             await asyncio.sleep(dt) #20Hz
 
 
+    # hula drone prob doesnt need to turn anyway
+    # async def turn_to_yaw_deg(self):
+    #     self.stop_hover()
+    #     # BUT IF NEEDED, USE create_flight_controller, reference nonUWB_fly_to_position

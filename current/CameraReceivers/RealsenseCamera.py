@@ -45,22 +45,11 @@ class CameraReceiver:
                 depth_frame = frames.get_depth_frame()
                 color_frame = frames.get_color_frame()
 
-                if depth_frame and color_frame:
-                    with self.lock:
-                        self.colour = np.asanyarray(color_frame.get_data()).copy()
-                        self.depth = np.asanyarray(depth_frame.get_data()).copy()
-
-                # frames = self.pipeline.wait_for_frames()
-
-                # depth_frame = frames.get_depth_frame()
-                # if depth_frame:
-                #     depth_image = np.asanyarray(depth_frame.get_data())
-                #     with self.lock: self.depth = depth_image
-
-                # color_frame = frames.get_color_frame()
-                # if color_frame:
-                #     color_image = np.asanyarray(color_frame.get_data())
-                #     with self.lock: self.colour = color_image
+                if color_frame:
+                    with self.lock: self.colour = np.asanyarray(color_frame.get_data()).copy()
+                        
+                if depth_frame:
+                    with self.lock: self.depth = np.asanyarray(depth_frame.get_data()).copy()
 
                 frames = None
                 depth_frame = None
