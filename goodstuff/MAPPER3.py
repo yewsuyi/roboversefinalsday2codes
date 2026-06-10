@@ -12,7 +12,7 @@ from Plotdisplay import pointcloud_plotter_task
 from UWBaller import UWBParserThread
 from Astar import pathfind, simplifypath
 # from pathextractor import extract_path
-from MAPPERPATH import expand_waypoints
+from Mapperpath import expand_waypoints
 
 '''
 commander set_ekf_origin 47.397742 8.545594 488.0

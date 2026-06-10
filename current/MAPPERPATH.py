@@ -1,5 +1,5 @@
 # from ScanMap import ScanMapper
-def expand_waypoints():
+def expand_waypoints(careful=False):
     """
     Convert a list of waypoint coordinates into a complete path.
 
@@ -14,18 +14,35 @@ def expand_waypoints():
         Complete path including all intermediate coordinates.
     """
     
-    waypoints = ( #WAYPOINTS XYU
-        (58, 28), #START
-        (17, 28), #bot left corner
-        (17, 204), #top left corner
-        (31, 204), #
-        (31, 60), #
-        (59, 60), #
-        (59, 204), #
-        (93, 204),
-        (93, 28),
-        (80, 28), #END
-    )
+    if careful:
+        # +0.50M CLEARANCE
+        waypoints = ( #WAYPOINTS XYU
+            (58, 28), #START
+            (27, 28), #bot left corner
+            (27, 194), #top left corner
+            (46, 194), #
+            (46, 70), #
+            (65, 70), #
+            (65, 194), #
+            (83, 194),
+            (83, 28),
+            (80, 28), #END
+        )
+
+    else:
+        # VANILLA
+        waypoints = ( #WAYPOINTS XYU
+            (58, 28), #START
+            (17, 28), #bot left corner
+            (17, 204), #top left corner
+            (42, 204), #
+            (42, 60), #
+            (67, 60), #
+            (67, 204), #
+            (93, 204),
+            (93, 28),
+            (80, 28), #END
+        )
 
     if not waypoints:
         return []

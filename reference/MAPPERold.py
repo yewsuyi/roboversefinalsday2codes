@@ -4,22 +4,16 @@ import time
 import numpy as np
 import math
 import traceback
-# from plotarray import plot_array
 
 from PointClouder import GlobalMapper, scannow, depthcam_pointcloud_task
 from ScanMap import ScanMapper
 from Plotdisplay import pointcloud_plotter_task
 from UWBaller import UWBParserThread
 from Astar import pathfind, simplifypath
-# from pathextractor import extract_path
 from Mapperpath import expand_waypoints
 
-'''
-commander set_ekf_origin 47.397742 8.545594 488.0
-'''
-
 # THE BIG 3 MODULAR ONES # TODO
-from CameraReceivers.RealsenseCamera import CameraReceiver
+from CameraReceivers.RealsenseCameraALIGNED import CameraReceiver
 from DroneDrivers.MAVdrone import Drone
 from PositionGetters.get_position_with_task import SharedState, position_monitor_task
 # from Imager import imager_task
@@ -27,7 +21,7 @@ from PositionGetters.get_position_with_task import SharedState, position_monitor
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
-BRICKEDMODE = False # NOTE TEST MODEs
+BRICKEDMODE = True # NOTE TEST MODEs
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
@@ -79,8 +73,8 @@ PITCHDOWN = 20.0
 #NEW
 
 SCANS_PER_POINTCLOUDSCAN = 1
-POINTCLOUDERDELAY = 1.0
-MAPDRAWERDELAY = 3.0
+POINTCLOUDERDELAY = 0.2
+MAPDRAWERDELAY = 1.2
 IMAGE_DETECTOR_COOLDOWN = 1.0
 
 SAFETY_PAUSE = 0.8
@@ -107,7 +101,7 @@ async def run():
         else: parser.start()
     else: parser = None
 
-    # receiver = CameraReceiver()
+    receiver = CameraReceiver()
     
     scanmapper = ScanMapper(
 
@@ -123,21 +117,19 @@ async def run():
     )
 
     #1.0 and 1.5 still detect the barrels but is more clean
-    # pointclouder = GlobalMapper(
-    #     cam_height=DRONE_HEIGHT, #1.0
-    #     obs_h_min=OBS_H_MIN,
-    #     obs_h_max=OBS_H_MAX,
-    #     depth_min=0.03, #0.3
-    #     depth_max=SCAN_RADIUS_M,
-    #     use_pitchdown=USE_PITCHDOWN,
-    #     pitchdown=PITCHDOWN,
-
-    #     scans_per_pointcloud=SCANS_PER_POINTCLOUDSCAN,
-
-    #     yaw_in_degrees=True,
-    #     yaw_smoothing=1.0,
-    #     map_yaw_error_rad=MAP_YAW_ERROR_RAD,
-    # )
+    pointclouder = GlobalMapper(
+        cam_height=DRONE_HEIGHT, #1.0
+        obs_h_min=OBS_H_MIN,
+        obs_h_max=OBS_H_MAX,
+        depth_min=0.03, #0.3
+        depth_max=SCAN_RADIUS_M,
+        use_pitchdown=USE_PITCHDOWN,
+        pitchdown=PITCHDOWN,
+        scans_per_pointcloud=SCANS_PER_POINTCLOUDSCAN,
+        yaw_in_degrees=True,
+        yaw_smoothing=1.0,
+        map_yaw_error_rad=MAP_YAW_ERROR_RAD,
+    )
 
     drone = Drone(
         UWB_TAG=TAG_IG,
@@ -156,6 +148,9 @@ async def run():
 
     #SETUP
     try:
+
+
+
         # #SETUP PATH - list of XYM coordinates
         # patharray = np.load('bousphedron.npy')
         # path_to_follow_xyu = extract_path(patharray)
@@ -207,20 +202,20 @@ async def run():
 
 
     # POINTCLOUD & SCANMAP PLOTTER TASK - POINTCLOUD & SCANMAP PLOTTER TASK - POINTCLOUD & SCANMAP PLOTTER TASK
-        # pointcloud_visualiser_task = asyncio.create_task(pointcloud_plotter_task(
-        #     pointclouder, state, scanmapper, stop_event,
-        #     drawloopdelay=MAPDRAWERDELAY
-        # ))
+        pointcloud_visualiser_task = asyncio.create_task(pointcloud_plotter_task(
+            pointclouder, state, scanmapper, stop_event,
+            drawloopdelay=MAPDRAWERDELAY
+        ))
     # POINTCLOUD & SCANMAP PLOTTER TASK - POINTCLOUD & SCANMAP PLOTTER TASK - POINTCLOUD & SCANMAP PLOTTER TASK
 
 
     # DEPTHCAM POINTCLOUDER TASK - DEPTHCAM POINTCLOUDER TASK - DEPTHCAM POINTCLOUDER TASK - DEPTHCAM POINTCLOUDER TASK
-        # pointcloud_updater_task = asyncio.create_task(depthcam_pointcloud_task(
-        #     drone, receiver, pointclouder, state, scanmapper, stop_event,
-        #     parser, USE_UWB_MODE,
-        #     loopdelay=POINTCLOUDERDELAY #0.5 #1.0 #TODO TUNE
-        #     )
-        # )
+        pointcloud_updater_task = asyncio.create_task(depthcam_pointcloud_task(
+            drone, receiver, pointclouder, state, scanmapper, stop_event,
+            loopdelay=POINTCLOUDERDELAY, #0.5 #1.0 #TODO TUNE
+            parser, USE_UWB_MODE,uwb_tag=0,
+            )
+        )
     # DEPTHCAM POINTCLOUDER TASK - DEPTHCAM POINTCLOUDER TASK - DEPTHCAM POINTCLOUDER TASK - DEPTHCAM POINTCLOUDER TASK
 
 
@@ -236,7 +231,7 @@ async def run():
         print(f"POST-SETUP batt:{battery_remain}")
         print("starting main fly script...\n===========")
         
-        if not BRICKEDMODE: await megatron(drone, state, None, None, scanmapper, parser)
+        if not BRICKEDMODE: await megatron(drone, state, receiver, pointclouder, scanmapper, parser, path_to_follow_xym)
 
     except Exception as e:
         print(f"Main code failed: {e}")
@@ -260,7 +255,7 @@ async def run():
         np.save('obstaclemap.npy', scanmapper.scanmap)
         print("Scanmap andObstacle map successfully saved!")
 
-        # receiver.stop()
+        receiver.stop()
         if parser is not None:
             parser.stop()
             parser.join()
@@ -304,7 +299,7 @@ async def run():
 
 
 
-async def megatron(drone, state, receiver, mapper, scanmapper:ScanMapper, parser): #pilot loop
+async def megatron(drone, state, receiver, mapper, scanmapper:ScanMapper, parser, path_to_follow_xym): #pilot loop
 
 
     # print("moving drone north...")
@@ -347,10 +342,6 @@ async def megatron(drone, state, receiver, mapper, scanmapper:ScanMapper, parser
         #waypoints_xym = [(E, N) for N, E in waypoints]
 
         #HAND OVER CONTROL TO drone.follow_waypoints()
-
-    wp_xyu = expand_waypoints()
-    path_to_follow_yxm = [scanmapper.scanmapXY_to_worldNE(X, Y) for X, Y in wp_xyu]
-    path_to_follow_xym = [(E, N) for N, E in path_to_follow_yxm]
 
     print("GO!!!")
     await drone.follow_waypoints(

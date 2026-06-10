@@ -15,6 +15,9 @@ def depth_to_xy_map_downward(
     Pinhole projection mapper tailored specifically for a DOWNWARD-facing depth camera.
     Returns body-frame X (Right) and Z (Forward) point cloud arrays.
     """
+    MIN_DEPTH=0.1 #FORCE VALUE
+    MAX_DEPTH=5.0 #FORCE VALUE
+
     if (not height) or (not width): 
         height, width = depth_img.shape
 

@@ -15,8 +15,6 @@ class GlobalMapper:
         obs_h_max=1.5,
         depth_min=0.2,
         depth_max=15.0,
-        use_pitchdown=False,
-        pitchdown=0.0,
         yaw_in_degrees=False,
         yaw_clockwise=True,
         yaw_smoothing=0.7,
@@ -35,8 +33,6 @@ class GlobalMapper:
         self.obs_h_max = obs_h_max
         self.depth_min = depth_min
         self.depth_max = depth_max
-        self.use_pitchdown = use_pitchdown
-        self.pitchdown = pitchdown
 
         self.yaw_in_degrees = yaw_in_degrees
         self.yaw_clockwise = yaw_clockwise
