@@ -17,7 +17,8 @@ async def run():
         drones[str(ip)] = DroneAPI()
 
         drones[str(ip)].connect(ip) # connect to ip address to gain control of drone
-        drones[str(ip)].BLINK/LIGHTUP #YUJUN TODO
+        drones[str(ip)].face_camera_down()
+        # drones[str(ip)].BLINK/LIGHTUP #YUJUN TODO
         print(f"Drone ip:{ip}\n")
 
         await asyncio.sleep(3.0)
