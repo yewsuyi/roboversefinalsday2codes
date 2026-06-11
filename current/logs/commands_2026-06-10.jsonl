@@ -24,3 +24,4 @@
 {"timestamp":"2026-06-10T17:18:44.297533","method":"set_video_stream","args":{"enabled":true},"result":255,"success":true,"elapsed_sec":0.0005}
 {"timestamp":"2026-06-10T17:46:29.765637","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0129}
 {"timestamp":"2026-06-10T17:46:32.780623","method":"set_camera_angle","args":{"mode":1,"angle":90},"result":255,"success":true,"elapsed_sec":0.0007}
+{"timestamp":"2026-06-10T23:14:18.581046","method":"set_app_mode","args":{"mode":1},"exception":{"type":"NotReady","message":"Not connected to drone"},"success":false,"elapsed_sec":0.0001}
