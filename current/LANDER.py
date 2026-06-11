@@ -9,7 +9,7 @@ from UWBaller import UWBParserThread
 from hulaImager import detect_aruco_markers
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
-USE_HULA_MANUAL_MODE = True
+USE_HULAX_MANUAL_MODE = True
 USE_UWB_MODE = False
 OBS_INFLATION_BUFFER = 10
 CASCADE_DELAY = 5.0
@@ -34,8 +34,8 @@ drone_info = {
         "UWB_TAG": 0,
         "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": SOIGC_Nym1,
         "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": SOIGC_Exm1,
-        "LANDING_Nym": -1.38-SOIGC_Nym1,
-        "LANDING_Exm": -2.75-SOIGC_Exm1,
+        "LANDING_Nym": 4.4-SOIGC_Nym1,
+        "LANDING_Exm": 1.35-SOIGC_Exm1,
         "ORDER":0,
         },
 
@@ -43,8 +43,8 @@ drone_info = {
         "UWB_TAG": 1,
         "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": SOIGC_Nym2,
         "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": SOIGC_Exm2,
-        "LANDING_Nym": -1.38-SOIGC_Nym2,
-        "LANDING_Exm": -2.90-SOIGC_Exm2,
+        "LANDING_Nym": 7.85-SOIGC_Nym2,
+        "LANDING_Exm": 1.3-SOIGC_Exm2,
         "ORDER":1,
     },
 
@@ -52,8 +52,8 @@ drone_info = {
         "UWB_TAG": 2,
         "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": SOIGC_Nym3,
         "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": SOIGC_Exm3,
-        "LANDING_Nym": -1.38-SOIGC_Nym3,
-        "LANDING_Exm": -3.05-SOIGC_Exm3,
+        "LANDING_Nym": 4.4-SOIGC_Nym3,
+        "LANDING_Exm": 4.4-SOIGC_Exm3,
         "ORDER":2,
     }
 
@@ -86,13 +86,13 @@ async def run():
 
         # load obstaclemap, a boolean array
         obstaclemap = np.load("obstaclemap.npy")
+        # obstaclemap = np.empty((220, 110))
 
         # generate astar path instructions
         for ip, info in drone_info.items():
 
 
             drones[ip] = Drone(
-                self,
                 USE_HULAX_MANUAL_MODE,
                 info["UWB_TAG"],
                 USE_UWB_MODE,
@@ -102,11 +102,11 @@ async def run():
             drones[ip].face_camera_down()
             print("drone connected")
 
-            asyncscanners[ip] = asyncio.create_task(detect_aruco_markers(
-                drone_info[ip]["ORDER"],
-                drones[ip],
-                IMAGERCOOLDOWN,
-                ))
+            # asyncscanners[ip] = asyncio.create_task(detect_aruco_markers(
+            #     drone_info[ip]["ORDER"],
+            #     drones[ip],
+            #     IMAGERCOOLDOWN,
+            #     ))
 
             scanmappers[ip] = ScanMapper(
                 heightcells_NORTHLENGTH=ARENA_NORTHLENGTH,

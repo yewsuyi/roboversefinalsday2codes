@@ -2,7 +2,7 @@ import numpy as np
 import asyncio
 # from scipy.ndimage import binary_dilation
 from Astar import astar, simplifypath, pathfind
-from Frontier import find_frontier_cells, find_frontier_clusters, rank_frontier_clusters, closest_cell_to_centroid
+# from Frontier import find_frontier_cells, find_frontier_clusters, rank_frontier_clusters, closest_cell_to_centroid
 
 #init scanmap: scanmap = np.full((height_NORTHLENGTH, width_EASTLENGTH), 0, dtype=np.int8)
 
