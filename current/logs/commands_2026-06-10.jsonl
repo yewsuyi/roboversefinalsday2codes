@@ -1,0 +1,16 @@
+{"timestamp":"2026-06-10T15:23:37.422758","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0067}
+{"timestamp":"2026-06-10T15:24:22.420716","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.008}
+{"timestamp":"2026-06-10T15:28:17.786682","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0046}
+{"timestamp":"2026-06-10T15:30:30.569074","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0047}
+{"timestamp":"2026-06-10T15:30:33.576858","method":"set_camera_angle","args":{"mode":1,"angle":90},"result":255,"success":true,"elapsed_sec":0.0006}
+{"timestamp":"2026-06-10T15:31:38.685520","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0069}
+{"timestamp":"2026-06-10T15:31:41.695805","method":"set_camera_angle","args":{"mode":1,"angle":90},"result":255,"success":true,"elapsed_sec":0.0011}
+{"timestamp":"2026-06-10T15:31:57.855224","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0066}
+{"timestamp":"2026-06-10T15:32:00.866260","method":"set_camera_angle","args":{"mode":1,"angle":90},"result":255,"success":true,"elapsed_sec":0.0006}
+{"timestamp":"2026-06-10T15:33:07.655933","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0079}
+{"timestamp":"2026-06-10T15:33:10.665810","method":"set_camera_angle","args":{"mode":1,"angle":90},"result":255,"success":true,"elapsed_sec":0.0011}
+{"timestamp":"2026-06-10T15:33:25.184787","method":"connect","args":{"ip":"192.168.100.1"},"exception":{"type":"DroneConnectionError","message":"Failed to connect to drone at 192.168.100.1"},"success":false,"elapsed_sec":3.0041}
+{"timestamp":"2026-06-10T15:37:39.392757","method":"connect","args":{"ip":"192.168.100.1"},"exception":{"type":"DroneConnectionError","message":"Failed to connect to drone at 192.168.100.1"},"success":false,"elapsed_sec":3.0032}
+{"timestamp":"2026-06-10T15:37:56.502946","method":"connect","args":{"ip":"192.168.100.1"},"exception":{"type":"DroneConnectionError","message":"Failed to connect to drone at 192.168.100.1"},"success":false,"elapsed_sec":3.0018}
+{"timestamp":"2026-06-10T15:39:09.797043","method":"connect","args":{"ip":"192.168.100.1"},"exception":{"type":"DroneConnectionError","message":"Failed to connect to drone at 192.168.100.1"},"success":false,"elapsed_sec":3.002}
+{"timestamp":"2026-06-10T15:40:57.573424","method":"connect","args":{"ip":"192.168.100.1"},"exception":{"type":"DroneConnectionError","message":"Failed to connect to drone at 192.168.100.1"},"success":false,"elapsed_sec":3.0024}
