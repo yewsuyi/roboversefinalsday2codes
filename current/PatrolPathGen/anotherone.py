@@ -113,9 +113,9 @@ def region_widget():
     alpha_high={"min": 1.01, "max": 1.99, "step": 0.05, "label": "Alpha (High Freq)"},
     scale_high={"min": 0.5, "max": 15.0, "step": 0.5, "label": "Scale (High Freq)"},
     alpha_low={"min": 1.01, "max": 1.99, "step": 0.05, "label": "Alpha (Low Freq)"},
-    scale_low={"min": 0.5, "max": 15.0, "step": 0.5, "label": "Scale (Low Freq)"}
+    scale_low={"min": 0.5, "max": 25.0, "step": 0.5, "label": "Scale (Low Freq)"}
 )
-def path_widget(total_waypoints=30, alpha_high=1.1, scale_high=1.8, alpha_low=1.9, scale_low=7.5):
+def path_widget(total_waypoints=15, alpha_high=1.1, scale_high=1.8, alpha_low=1.9, scale_low=25):
     reg_map = region_layer.data
     freq_map = freq_layer.data
     
