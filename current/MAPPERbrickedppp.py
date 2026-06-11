@@ -10,7 +10,7 @@ from ScanMap import ScanMapper
 from Plotdisplay import pointcloud_plotter_task
 from UWBaller import UWBParserThread
 from Astar import pathfind, simplifypath
-from Mapperpath import expand_waypoints
+from MAPPERPATH import expand_waypoints
 
 # THE BIG 4 MODULAR ONES # +++++++++++++++++++++++
 from CameraReceivers.RealsenseCamera import CameraReceiver
