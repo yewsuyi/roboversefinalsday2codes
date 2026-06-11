@@ -1,5 +1,5 @@
 # from ScanMap import ScanMapper
-def expand_waypoints(careful=False):
+def expand_waypoints(careful=True):
     """
     Convert a list of waypoint coordinates into a complete path.
 
