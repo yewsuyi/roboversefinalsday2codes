@@ -5,8 +5,10 @@ from ScanMap import ScanMapper
 from Astar import pathfind
 from dola import Dola
 from DroneDrivers.HULAXdrone import Drone
+from pyhulax.core import Direction, TelemetryUnavailable,CameraPitchMode,VelocityLevel
 from UWBaller import UWBParserThread
 from hulaImager import detect_aruco_markers
+import random
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 USE_HULAX_MANUAL_MODE = True
@@ -105,17 +107,27 @@ async def run():
                 IMAGERCOOLDOWN,
                 ))
 
-        drones[TODOIP1].arm_and_takeoff(False)
-        drones[TODOIP2].arm_and_takeoff(False)
-        drones[TODOIP3].arm_and_takeoff(False)
+        drones[TODOIP1].arm_and_takeoff(True)
+        drones[TODOIP2].arm_and_takeoff(True)
+        drones[TODOIP3].arm_and_takeoff(True)
 
-    while True:
+        while True:
 
-        for ip, info in drone_info.items():
-            randx, randy = 
-            drones.drone.fly_to(, 100)
+            for ip, info in drone_info.items():
+                randy = random.randint(-50, 850)
+                randx = random.randint(-100, 100)
+                # drones.drone.fly_to(randx, randy, 100)
+                drones[ip].drone.move_to(x=randx, y=randy, z=100, speed=VelocityLevel.SLOW)
 
 
 
-        await asyncio.sleep(5.0)
+            await asyncio.sleep(5.0)
+
+    except Exception as e: raise e
+    finally:
+        # for ip, info in drone_info.items():
+        #     drones[ip].land(False)
+        if parser is not None:
+            parser.stop()
+            parser.join()
             

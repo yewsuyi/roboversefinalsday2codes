@@ -15,7 +15,7 @@ OBS_INFLATION_BUFFER = 10
 CASCADE_DELAY = 5.0
 
 #TODO TODO
-TODOIP1 = ""
+TODOIP1 = "192.168.100.1" #192.168.100.1
 TODOIP2 = ""
 TODOIP3 = ""
 
@@ -39,23 +39,23 @@ drone_info = {
         "ORDER":0,
         },
 
-    TODOIP2:{
-        "UWB_TAG": 1,
-        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": SOIGC_Nym2,
-        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": SOIGC_Exm2,
-        "LANDING_Nym": 7.85-SOIGC_Nym2,
-        "LANDING_Exm": 1.3-SOIGC_Exm2,
-        "ORDER":1,
-    },
+    # TODOIP2:{
+    #     "UWB_TAG": 1,
+    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": SOIGC_Nym2,
+    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": SOIGC_Exm2,
+    #     "LANDING_Nym": 7.85-SOIGC_Nym2,
+    #     "LANDING_Exm": 1.3-SOIGC_Exm2,
+    #     "ORDER":1,
+    # },
 
-    TODOIP3:{
-        "UWB_TAG": 2,
-        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": SOIGC_Nym3,
-        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": SOIGC_Exm3,
-        "LANDING_Nym": 4.4-SOIGC_Nym3,
-        "LANDING_Exm": 4.4-SOIGC_Exm3,
-        "ORDER":2,
-    }
+    # TODOIP3:{
+    #     "UWB_TAG": 2,
+    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": SOIGC_Nym3,
+    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": SOIGC_Exm3,
+    #     "LANDING_Nym": 4.4-SOIGC_Nym3,
+    #     "LANDING_Exm": 4.4-SOIGC_Exm3,
+    #     "ORDER":2,
+    # }
 
 }
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
@@ -85,7 +85,7 @@ async def run():
         else: parser = None
 
         # load obstaclemap, a boolean array
-        obstaclemap = np.load("obstaclemap.npy")
+        obstaclemap = np.load("obstaclemap copy.npy")
         # obstaclemap = np.empty((220, 110))
 
         # generate astar path instructions
@@ -124,7 +124,7 @@ async def run():
             goal_xu, goal_yu = scanmappers[ip].worldNE_to_scanmapXY(info["LANDING_Nym"], info["LANDING_Exm"])
 
             path_yxu = pathfind(
-                obstaclemap=obstaclemap,
+                scanmapper=scanmappers[ip],
                 start_xu=drone_xu,
                 start_yu=drone_yu,
                 goal_xu=goal_xu,
@@ -145,6 +145,15 @@ async def run():
             # #         instructions.pop()
             # astarinstructions[ip] = instructions
 
+        # for ip, info in drone_info.items():
+        #     drones[ip].arm_and_takeoff(False)
+
+        # await asyncio.sleep(6.0)
+        # for ip, info in drone_info.items():
+        #     drones[ip].land(False)
+
+        # await asyncio.sleep(6.0)
+
         stagecount = 0
         numdrones = len(drones)
         while stagecount <= numdrones:
@@ -154,7 +163,7 @@ async def run():
                     drones[ip].arm_and_takeoff(False)
                 
                 elif info["ORDER"] == stagecount - 1:
-                    print(f"Stage {stagecount}: Drone {ip} taking off")
+                    print(f"Stage {stagecount}: Drone {ip} GOING off")
                     asyncio.create_task(drones[ip].follow_waypoints_and_land(
                         scanmappers[ip],
                         parser,
@@ -177,6 +186,8 @@ async def run():
 
     except Exception as e: raise e
     finally:
+        # for ip, info in drone_info.items():
+        #     drones[ip].land(False)
         if parser is not None:
             parser.stop()
             parser.join()

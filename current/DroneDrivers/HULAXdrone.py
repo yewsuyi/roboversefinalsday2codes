@@ -2,7 +2,7 @@ from pyhulax import DroneAPI
 from pyhulax.core import Direction, TelemetryUnavailable,CameraPitchMode
 import asyncio
 import math
-from DroneDrivers.path_following import global_ned_to_body_velocity, compute_path_follow_command, forward_speed_to_ned_velocity
+from DroneDrivers.path_following import get_lookahead_target, global_ned_to_body_velocity, compute_path_follow_command, forward_speed_to_ned_velocity
 from UWBaller import UWBxy_to_globalNE
 
 dt = 0.05
@@ -49,9 +49,8 @@ class Drone():
         self.drone = DroneAPI()
         self.hovertask = None
         self.ctrl = None
-        if USE_HULAX_MANUAL_MODE:
-            self.drone.set_app_mode(1)
-            self.drone.set_velocity_level(round(self.NE_speedlimit*100)) #MUST BE BTWN 0 and 300, int
+        self.manual = USE_HULAX_MANUAL_MODE
+        
 
     def get_uwb_position_NE(self, UWBparser):
         x, y, update_time, validity = UWBparser.get_tag_position(self.uwb_tag)
@@ -64,7 +63,8 @@ class Drone():
         while True:
             try:
                 east, north, up = self.drone.get_position()
-                return north/100, east/100, -up/100
+                # print(north)
+                return north[1]/100, east[1]/100, -up[1]/100
             
             except TelemetryUnavailable as e:
                 print("position telemetry unavailable, trying again")
@@ -98,6 +98,9 @@ class Drone():
 
     def connect(self):
         self.drone.connect(self.system_address)
+        if self.manual:
+            self.drone.set_app_mode(1)
+            self.drone.set_velocity_level(round(self.NE_speedlimit*100)) #MUST BE BTWN 0 and 300, int
     def arm_and_takeoff(self, blocking):
         self.drone.takeoff(
             height_cm=round(self.takeoff_height * 100),
@@ -106,7 +109,7 @@ class Drone():
         
     def hover(self): self.drone.hover(duration_seconds=50.0, blocking=False) #prob no need use
     # i am assuming that any movement control will override the hover command, so no need for a stop_hover() fn
-    def land(self): self.drone.land(blocking=False)
+    def land(self, blocking=False): self.drone.land(blocking)
 
     def turn_left(self): self.drone.rotate(-90.0)
     def turn_right(self): self.drone.rotate(90.0)
@@ -126,7 +129,7 @@ class Drone():
 
     async def nonUWB_fly_to_position(self, UWBparser, target_N, target_E):
         # USE create_flight_controller
-        self.stop_hover()
+        await self.stop_hover()
         if self.ctrl is None: self.prep_offboard()
 
         self.ctrl.set_target(target_E, target_N, self.takeoff_height)
@@ -223,7 +226,7 @@ class Drone():
 
         try:
 
-            self.stop_hover()
+            await self.stop_hover()
             while True:
 
                 if self.uwb_mode:
@@ -277,7 +280,7 @@ class Drone():
                 
                 target_position = get_lookahead_target(mypath, drone_position, goal_xy_coords, lookahead=lookahead)
 
-                target_xm, target_ym = target_position_xym
+                target_xm, target_ym = target_position
                 target_xu, target_yu = scanmapper.worldNE_to_scanmapXY(target_ym, target_xm)
                 scanmapper.scanmap[target_yu, target_xu] = 4
 
@@ -329,7 +332,7 @@ class Drone():
         # USE send_manual_control at 20Hz
         # https://pyhulax.xenops.ae/sdk/pyhulax/#manual-control
 
-        self.stop_hover()
+        await self.stop_hover()
         stable_counter = 0
 
         prev_err_n = None
