@@ -1,5 +1,7 @@
 import asyncio
 from dola import Dola
+from pyhulax import DroneAPI
+from pyhulax.core import Direction, TelemetryUnavailable,CameraPitchMode
 
 async def run():
 
@@ -17,11 +19,12 @@ async def run():
         drones[str(ip)] = DroneAPI()
 
         drones[str(ip)].connect(ip) # connect to ip address to gain control of drone
-        drones[str(ip)].face_camera_down()
+        drones[str(ip)].set_camera_angle(CameraPitchMode.DOWN_ABSOLUTE, 90)
         # drones[str(ip)].BLINK/LIGHTUP #YUJUN TODO
         print(f"Drone ip:{ip}\n")
 
         await asyncio.sleep(3.0)
 
 if __name__ == "__main__":
+
     asyncio.run(run())
