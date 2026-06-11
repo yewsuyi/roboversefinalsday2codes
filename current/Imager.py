@@ -11,11 +11,13 @@ import time
 try:
     from rknnlite.api import RKNNLite
 except ImportError:
+    print("\n\n\nNO rknnlite.api import RKNNLite IMPORT\n\n\n")
     RKNNLite = None
 
 try:
     from ultralytics import YOLO
 except ImportError:
+    print("\n\n\nNO ultralytics import YOLO IMPORT\n\n\n")
     YOLO = None
 
 from rknndecoder import decode_yolov11_rknn, draw_detections
