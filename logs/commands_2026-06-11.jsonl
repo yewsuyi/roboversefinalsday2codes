@@ -1,0 +1,2 @@
+{"timestamp":"2026-06-11T11:56:06.534717","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0121}
+{"timestamp":"2026-06-11T11:56:09.549693","method":"set_camera_angle","args":{"mode":1,"angle":90},"result":255,"success":true,"elapsed_sec":0.0}
