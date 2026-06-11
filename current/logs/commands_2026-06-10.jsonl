@@ -14,3 +14,13 @@
 {"timestamp":"2026-06-10T15:37:56.502946","method":"connect","args":{"ip":"192.168.100.1"},"exception":{"type":"DroneConnectionError","message":"Failed to connect to drone at 192.168.100.1"},"success":false,"elapsed_sec":3.0018}
 {"timestamp":"2026-06-10T15:39:09.797043","method":"connect","args":{"ip":"192.168.100.1"},"exception":{"type":"DroneConnectionError","message":"Failed to connect to drone at 192.168.100.1"},"success":false,"elapsed_sec":3.002}
 {"timestamp":"2026-06-10T15:40:57.573424","method":"connect","args":{"ip":"192.168.100.1"},"exception":{"type":"DroneConnectionError","message":"Failed to connect to drone at 192.168.100.1"},"success":false,"elapsed_sec":3.0024}
+{"timestamp":"2026-06-10T17:13:34.868255","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0103}
+{"timestamp":"2026-06-10T17:13:37.894104","method":"get_drone_id","args":{},"result":661,"success":true,"elapsed_sec":0.0}
+{"timestamp":"2026-06-10T17:13:37.894022","method":"create_video_stream","args":{},"result":{"_type":"VideoStream","config":{"_type":"StreamConfig","drone_ip":"192.168.100.1","drone_id":661,"timeout":30.0,"buffer_size":10}},"success":true,"elapsed_sec":0.0004}
+{"timestamp":"2026-06-10T17:13:37.894457","method":"set_video_stream","args":{"enabled":true},"result":255,"success":true,"elapsed_sec":0.0003}
+{"timestamp":"2026-06-10T17:18:41.288130","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0049}
+{"timestamp":"2026-06-10T17:18:44.296786","method":"get_drone_id","args":{},"result":661,"success":true,"elapsed_sec":0.0001}
+{"timestamp":"2026-06-10T17:18:44.296621","method":"create_video_stream","args":{},"result":{"_type":"VideoStream","config":{"_type":"StreamConfig","drone_ip":"192.168.100.1","drone_id":661,"timeout":30.0,"buffer_size":10}},"success":true,"elapsed_sec":0.0008}
+{"timestamp":"2026-06-10T17:18:44.297533","method":"set_video_stream","args":{"enabled":true},"result":255,"success":true,"elapsed_sec":0.0005}
+{"timestamp":"2026-06-10T17:46:29.765637","method":"connect","args":{"ip":"192.168.100.1"},"result":null,"success":true,"elapsed_sec":3.0129}
+{"timestamp":"2026-06-10T17:46:32.780623","method":"set_camera_angle","args":{"mode":1,"angle":90},"result":255,"success":true,"elapsed_sec":0.0007}
