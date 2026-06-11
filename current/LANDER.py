@@ -5,41 +5,57 @@ from ScanMap import ScanMapper
 from Astar import pathfind
 from dola import Dola
 from DroneDrivers.HULAXdrone import Drone
+from UWBaller import UWBParserThread
+from hulaImager import detect_aruco_markers
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 USE_HULA_MANUAL_MODE = True
-USE_UWB_MODE = True
+USE_UWB_MODE = False
 OBS_INFLATION_BUFFER = 10
 CASCADE_DELAY = 5.0
 
+#TODO TODO
+TODOIP1 = ""
+TODOIP2 = ""
+TODOIP3 = ""
+
+SOIGC_Nym1 = -1.38
+SOIGC_Exm1 = -2.75
+SOIGC_Nym2 = -1.38
+SOIGC_Exm2 = -2.90
+SOIGC_Nym3 = -1.38
+SOIGC_Exm3 = -3.05
+
+#ALSO EDIT LANDING ZONE COORDS
+
 #IP:
 drone_info = {
-    "TODOIP1":{
+    TODOIP1:{
         "UWB_TAG": 0,
-        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": -1.38,
-        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": -2.75,
-        "LANDING_Nym": -1.38,
-        "LANDING_Exm": -2.75,
+        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": SOIGC_Nym1,
+        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": SOIGC_Exm1,
+        "LANDING_Nym": -1.38-SOIGC_Nym1,
+        "LANDING_Exm": -2.75-SOIGC_Exm1,
         "ORDER":0,
         },
 
-    # "TODOIP2":{
-    #     "UWB_TAG": 1,
-    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": -1.38,
-    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": -2.90,
-    #     "LANDING_Nym": -1.38,
-    #     "LANDING_Exm": -2.90,
-    #     "ORDER":1,
-    # },
+    TODOIP2:{
+        "UWB_TAG": 1,
+        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": SOIGC_Nym2,
+        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": SOIGC_Exm2,
+        "LANDING_Nym": -1.38-SOIGC_Nym2,
+        "LANDING_Exm": -2.90-SOIGC_Exm2,
+        "ORDER":1,
+    },
 
-    # "TODOIP3":{
-    #     "UWB_TAG": 2,
-    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": -1.38,
-    #     "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": -3.05,
-    #     "LANDING_Nym": -1.38,
-    #     "LANDING_Exm": -3.05,
-    #     "ORDER":2,
-    # }
+    TODOIP3:{
+        "UWB_TAG": 2,
+        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Nym": SOIGC_Nym3,
+        "SCANMAP_ORIGIN_IN_GLOBAL_COORDS_Exm": SOIGC_Exm3,
+        "LANDING_Nym": -1.38-SOIGC_Nym3,
+        "LANDING_Exm": -3.05-SOIGC_Exm3,
+        "ORDER":2,
+    }
 
 }
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
@@ -48,9 +64,12 @@ ARENA_EASTLENGTH = 110
 METRES_PER_SCANMAP_CELL = 0.05
 BORDERWALL_THICKNESS = 1
 
+IMAGERCOOLDOWN = 0.25
+
 drones = {} #store drone objects here after connecting to them, key by ip address
 scanmappers = {}
 waypoints_xym = {}
+asyncscanners = {}
 # astarinstructions = {}
 
 async def run():
@@ -83,6 +102,11 @@ async def run():
             drones[ip].face_camera_down()
             print("drone connected")
 
+            asyncscanners[ip] = asyncio.create_task(detect_aruco_markers(
+                drone_info[ip]["ORDER"],
+                drones[ip],
+                IMAGERCOOLDOWN,
+                ))
 
             scanmappers[ip] = ScanMapper(
                 heightcells_NORTHLENGTH=ARENA_NORTHLENGTH,
@@ -95,7 +119,6 @@ async def run():
                 scanwidth=13,
                 borderwallthickness=BORDERWALL_THICKNESS,
             )
-
 
             drone_xu, drone_yu = scanmappers[ip].worldNE_to_scanmapXY(0.0, 0.0)
             goal_xu, goal_yu = scanmappers[ip].worldNE_to_scanmapXY(info["LANDING_Nym"], info["LANDING_Exm"])
@@ -154,8 +177,9 @@ async def run():
 
     except Exception as e: raise e
     finally:
-        parser.stop()
-        parser.join()
+        if parser is not None:
+            parser.stop()
+            parser.join()
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 import numpy as np
 import asyncio
-from scipy.ndimage import binary_dilation
+# from scipy.ndimage import binary_dilation
 from Astar import astar, simplifypath, pathfind
 from Frontier import find_frontier_cells, find_frontier_clusters, rank_frontier_clusters, closest_cell_to_centroid
 
@@ -180,40 +180,40 @@ class ScanMapper:
 
 
     #RETURNS GOAL CELL COORDINATE TUPLE (x,y)
-    def revaluate_frontiers(self, drone_Exm, drone_Nym, strategy=None, buffer=10):
-        #blockoff_scanmp and imprint must be called before calling this
-        #now that we know which cells are obstacles and free spaces, we can find the frontiers
+    # def revaluate_frontiers(self, drone_Exm, drone_Nym, strategy=None, buffer=10):
+    #     #blockoff_scanmp and imprint must be called before calling this
+    #     #now that we know which cells are obstacles and free spaces, we can find the frontiers
 
-        # PRE-PROCESSING # PRE-PROCESSING # PRE-PROCESSING
-        frontiergrid = self.scanmap.copy()
-        frontiergrid[frontiergrid>2] = 1 #reset all misc cells back to free cells
-        y, x = np.ogrid[-buffer:buffer+1, -buffer:buffer+1]
-        structure = x*x + y*y <= buffer*buffer
-        frontiergrid[binary_dilation(frontiergrid == 2,structure=structure)] = 2 #inflate obstacles
-        # PRE-PROCESSING # PRE-PROCESSING # PRE-PROCESSING
+    #     # PRE-PROCESSING # PRE-PROCESSING # PRE-PROCESSING
+    #     frontiergrid = self.scanmap.copy()
+    #     frontiergrid[frontiergrid>2] = 1 #reset all misc cells back to free cells
+    #     y, x = np.ogrid[-buffer:buffer+1, -buffer:buffer+1]
+    #     structure = x*x + y*y <= buffer*buffer
+    #     frontiergrid[binary_dilation(frontiergrid == 2,structure=structure)] = 2 #inflate obstacles
+    #     # PRE-PROCESSING # PRE-PROCESSING # PRE-PROCESSING
 
-        frontier_mask = find_frontier_cells(frontiergrid) # Find frontier cells (raw boolean mask)
-        clusters = find_frontier_clusters(frontier_mask, frontiergrid, min_cluster_size=10) # Find and rank clusters
-        self.scanmap[frontier_mask] = 3 #frontier cell visual
+    #     frontier_mask = find_frontier_cells(frontiergrid) # Find frontier cells (raw boolean mask)
+    #     clusters = find_frontier_clusters(frontier_mask, frontiergrid, min_cluster_size=10) # Find and rank clusters
+    #     self.scanmap[frontier_mask] = 3 #frontier cell visual
 
-        if not clusters:
-            print("ALERT!!! no clusters found, returning just a list of frontier cell coords ")
-            rowsNy, colsEx = np.where(self.scanmap == 3)
-            return [self.scanmapXY_to_worldNE(int(colsEx[i]), int(rowsNy[i])) for i in range(len(rowsNy))]
+    #     if not clusters:
+    #         print("ALERT!!! no clusters found, returning just a list of frontier cell coords ")
+    #         rowsNy, colsEx = np.where(self.scanmap == 3)
+    #         return [self.scanmapXY_to_worldNE(int(colsEx[i]), int(rowsNy[i])) for i in range(len(rowsNy))]
 
-        #ATTENTION WE ARE NOT SORTING FRONTIER CLUSTERS FOR NOW - RANKING IS DONE BASED ON THE CLOSEST CELL TO CENTROID
-        # clusters = rank_frontier_clusters(
-        #     clusters,
-        #     (drone_Ny_u+self.drone_Ny_offset, drone_Ex_u+self.drone_Ex_offset),
-        #     strategy)
+    #     #ATTENTION WE ARE NOT SORTING FRONTIER CLUSTERS FOR NOW - RANKING IS DONE BASED ON THE CLOSEST CELL TO CENTROID
+    #     # clusters = rank_frontier_clusters(
+    #     #     clusters,
+    #     #     (drone_Ny_u+self.drone_Ny_offset, drone_Ex_u+self.drone_Ex_offset),
+    #     #     strategy)
         
-        clusters = [closest_cell_to_centroid(cluster) for cluster in clusters]
-        #so clusters is now a list of (Ny_u,Ex_u) goal coordinate tuples
+    #     clusters = [closest_cell_to_centroid(cluster) for cluster in clusters]
+    #     #so clusters is now a list of (Ny_u,Ex_u) goal coordinate tuples
 
-        clusters = [self.scanmapXY_to_worldNE(goal_Ex_u, goal_Ny_u) for goal_Ny_u, goal_Ex_u in clusters]
+    #     clusters = [self.scanmapXY_to_worldNE(goal_Ex_u, goal_Ny_u) for goal_Ny_u, goal_Ex_u in clusters]
 
-        print(f"\n----------------\n{len(clusters)} CLUSTERS FOUND")
-        return clusters # return tuple coords(Ny,Ex) in meters
+    #     print(f"\n----------------\n{len(clusters)} CLUSTERS FOUND")
+    #     return clusters # return tuple coords(Ny,Ex) in meters
     
     def searchlight(self, drone_curr_Exm_coord, drone_curr_Nym_coord):
 

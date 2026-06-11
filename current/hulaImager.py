@@ -27,6 +27,8 @@ async def detect_aruco_markers(id, drone, loopdelay=0.1):
     - marked_image: image with bounding boxes drawn around the markers.
     """
 
+    drone = drone.drone #I ADDED THIS
+
     stream = hula_Imager_init(id, drone)
     while True: 
         

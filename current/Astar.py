@@ -1,6 +1,6 @@
 import heapq
 import numpy as np
-from scipy.ndimage import binary_dilation
+# from scipy.ndimage import binary_dilation
 
 
 def pathfind(scanmapper, start_xu, start_yu, goal_xu, goal_yu, buffer=10, blockymode=True, domain=10): #buffer=7, 5
@@ -20,9 +20,9 @@ def pathfind(scanmapper, start_xu, start_yu, goal_xu, goal_yu, buffer=10, blocky
 
 
     #inflate OBSTACLES ONLY in pathfindgrid (scanmap)
-    y, x = np.ogrid[-buffer:buffer+1, -buffer:buffer+1]
-    structure = x*x + y*y <= buffer*buffer
-    pathfindgrid[binary_dilation(pathfindgrid == 2,structure=structure)] = 2
+    # y, x = np.ogrid[-buffer:buffer+1, -buffer:buffer+1]
+    # structure = x*x + y*y <= buffer*buffer
+    # pathfindgrid[binary_dilation(pathfindgrid == 2,structure=structure)] = 2
 
     pathfindgrid[pathfindgrid==0] = 2
     pathfindgrid[pathfindgrid>2] = 1

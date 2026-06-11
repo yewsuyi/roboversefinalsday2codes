@@ -216,8 +216,8 @@ class Drone():
         - yaw 0 = north, yaw 90 = east
         - caller must start offboard mode before calling this
         """
-        # drone_yaw_deg = 0.0
-        # commanded_yaw = drone_yaw_deg  # initialise to current yaw (always 0.0)
+        drone_yaw_deg = 0.0
+        commanded_yaw = drone_yaw_deg  # initialise to current yaw (always 0.0)
         mypath = waypoints.copy()
         
 
@@ -250,53 +250,45 @@ class Drone():
                     current_n, current_e, current_d = await self.get_position_ned()
                     drone_position = (current_e, current_n)
 
-                distance_to_goal = math.hypot(goal_xy_coords[0] - drone_position[0], goal_xy_coords[1] - drone_position[1])
+                # drone_yaw_deg = state.yaw_deg
 
-                # speed_multiplier, target_yaw, distance_to_goal, target_position_xym = compute_path_follow_command(
-                #     waypoints=mypath,
-                #     drone_position=drone_position,
-                #     drone_yaw_deg=drone_yaw_deg,
-                #     goal_position=goal_xy_coords,
-                #     waypoint_tolerance=waypoint_tolerance,
-                #     goal_tolerance=goal_threshold,
-                #     use_yaw_slowdown=False,
-                #     # slow_yaw_error_deg=slow_yaw_error_deg,
-                #     # stop_yaw_error_deg=stop_yaw_error_deg,
-                #     lookahead=lookahead,
-                # )
-
-                if distance_to_goal <= goal_threshold:
-                    await self.hover()
-                    return
-
-                while mypath:
-                    if math.hypot(mypath[0][0] - drone_position[0], mypath[0][1] - drone_position[1]) <= waypoint_tolerance:
-                        mypath.pop(0)
-                    else:
-                        break
-                
-                target_position = get_lookahead_target(mypath, drone_position, goal_xy_coords, lookahead=lookahead)
+                speed_multiplier, target_yaw, distance_to_goal, target_position_xym = compute_path_follow_command(
+                    waypoints=mypath,
+                    drone_position=drone_position,
+                    drone_yaw_deg=drone_yaw_deg,
+                    goal_position=goal_xy_coords,
+                    waypoint_tolerance=waypoint_tolerance,
+                    goal_tolerance=goal_threshold,
+                    use_yaw_slowdown=use_yaw_slowdown,
+                    slow_yaw_error_deg=slow_yaw_error_deg,
+                    stop_yaw_error_deg=stop_yaw_error_deg,
+                    lookahead=lookahead,
+                )
 
                 target_xm, target_ym = target_position_xym
                 target_xu, target_yu = scanmapper.worldNE_to_scanmapXY(target_ym, target_xm)
                 scanmapper.scanmap[target_yu, target_xu] = 4
 
-                dx = target_position[0] - drone_position[0] # Delta East
-                dy = target_position[1] - drone_position[1] # Delta North
-                distance_to_target = math.hypot(dx, dy)
+                if distance_to_goal <= goal_threshold:
+                    await self.hover()
+                    return
 
-                if distance_to_target > 0:
-                    # Basic unit vectors multiplied by desired operational speed
-                    east_velocity = (dx / distance_to_target) * navspeed
-                    north_velocity = (dy / distance_to_target) * navspeed
-                else:
-                    east_velocity, north_velocity = 0.0, 0.0
+                #LERP the YAW
+                commanded_yaw = slew_yaw(commanded_yaw, target_yaw, max_yaw_rate_deg_per_tick)
 
-                # 6. Direct Mapping to Body Frame
-                # Since Heading=0: North is Forward, East is Right
-                # forward_vel = north_velocity
-                # right_vel = east_velocity
+                #this alr limits the speed to forward_speed
+                forward_speed = navspeed * speed_multiplier
+                north_velocity, east_velocity = forward_speed_to_ned_velocity(
+                    forward_speed=forward_speed,
+                    yaw_deg=commanded_yaw,
+                )
 
+                # await self.send_velocity(
+                #     north_velocity,
+                #     east_velocity,
+                #     0.0,
+                #     commanded_yaw,
+                # )
 
                 self.drone.send_manual_control(north_velocity, east_velocity)
                 # NOTE THAT IF DRONE TURNS, NEED TO ROTATE THIS SINCE

@@ -1,5 +1,20 @@
 import math
 
+def global_ned_to_body_velocity(target_north_vel, target_east_vel, current_drone_yaw_deg):
+    """
+    Transforms global NED velocity commands into drone Body-centric velocities
+    (Forward/Right) when the drone's yaw cannot be rotated.
+    
+    yaw: 0 = north, 90 = east
+    """
+    yaw_rad = math.radians(current_drone_yaw_deg)
+    
+    # Rotation matrix project mapping
+    forward_vel = (target_north_vel * math.cos(yaw_rad)) + (target_east_vel * math.sin(yaw_rad))
+    right_vel = (-target_north_vel * math.sin(yaw_rad)) + (target_east_vel * math.cos(yaw_rad))
+    
+    return forward_vel, right_vel
+
 def forward_speed_to_ned_velocity(forward_speed, yaw_deg):
     """
     Convert forward speed + yaw to NED velocity.
